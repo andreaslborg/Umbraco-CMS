@@ -1,3 +1,4 @@
+import { TimeFormatOptions } from '../../../utils.js';
 import { UmbUserKind } from '../../../utils/index.js';
 import type { UmbUserDetailModel } from '../../../types.js';
 import { css, html, customElement, state } from '@umbraco-cms/backoffice/external/lit';
@@ -90,6 +91,10 @@ export class UmbUserTableCollectionViewElement extends UmbCollectionViewElementB
 			.join(', ');
 	}
 
+	#formatLastLoginDate(lastLoginDate: string | null) {
+		return lastLoginDate ? this.localize.date(lastLoginDate, TimeFormatOptions) : this.localize.term('user_noLogin');
+	}
+
 	#createTableItems() {
 		this._tableItems = this._items.map((user) => {
 			return {
@@ -113,7 +118,7 @@ export class UmbUserTableCollectionViewElement extends UmbCollectionViewElementB
 					},
 					{
 						columnAlias: 'userLastLogin',
-						value: user.lastLoginDate,
+						value: this.#formatLastLoginDate(user.lastLoginDate),
 					},
 					{
 						columnAlias: 'userStatus',
