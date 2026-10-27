@@ -46,6 +46,7 @@ public class ElementOnlyOutputExpansionStrategy : IOutputExpansionStrategy
     private readonly IApiPropertyRenderer _propertyRenderer;
     private readonly IApiPublishedContentCache _apiPublishedContentCache;
     private readonly IRequestMemberAccessService _requestMemberAccessService;
+    private readonly HashSet<Guid> _mappingElementKeys = new();
 
     /// <summary>
     ///     Gets the stack of expand property nodes for tracking nested expansions.
@@ -112,7 +113,22 @@ public class ElementOnlyOutputExpansionStrategy : IOutputExpansionStrategy
 
     /// <inheritdoc/>
     public virtual IDictionary<string, object?> MapElementProperties(IPublishedElement element)
-        => MapProperties(element.Properties, true);
+    {
+        // An element that references itself, directly or through other elements, is only mapped once along any path.
+        if (_mappingElementKeys.Add(element.Key) is false)
+        {
+            return new Dictionary<string, object?>();
+        }
+
+        try
+        {
+            return MapProperties(element.Properties, true);
+        }
+        finally
+        {
+            _mappingElementKeys.Remove(element.Key);
+        }
+    }
 
     private IDictionary<string, object?> MapProperties(IEnumerable<IPublishedProperty> properties, bool forceExpandProperties = false)
     {
