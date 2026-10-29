@@ -66,6 +66,53 @@ describe('attachLinkInterceptor', () => {
 	});
 
 	describe('non-HTML resource links', () => {
+		it('intercepts a link rendered inside shadow DOM and opens it in a new tab', () => {
+			const shadowIframe = document.createElement('iframe');
+			document.body.appendChild(shadowIframe);
+			shadowIframe.contentDocument!.body.innerHTML = '';
+
+			const host = shadowIframe.contentDocument!.createElement('div');
+			const shadowRoot = host.attachShadow({ mode: 'open' });
+			const anchor = shadowIframe.contentDocument!.createElement('a');
+			anchor.href = '/files/brochure.pdf';
+			anchor.target = '_blank';
+			shadowRoot.appendChild(anchor);
+			shadowIframe.contentDocument!.body.appendChild(host);
+
+			let clickListener: EventListener | undefined;
+			const originalAddEventListener = shadowIframe.contentDocument!.addEventListener.bind(
+				shadowIframe.contentDocument!,
+			);
+			shadowIframe.contentDocument!.addEventListener = ((type: string, listener: EventListenerOrEventListenerObject) => {
+				if (type === 'click') {
+					clickListener = listener as EventListener;
+				}
+				return originalAddEventListener(type, listener as EventListenerOrEventListenerObject);
+			}) as typeof originalAddEventListener;
+
+			attachLinkInterceptor(shadowIframe);
+
+			let defaultPrevented = false;
+			const event = {
+				target: host,
+				composedPath: () => [anchor, shadowRoot, host, shadowIframe.contentDocument!.body, shadowIframe.contentDocument],
+				preventDefault: () => {
+					defaultPrevented = true;
+				},
+				stopImmediatePropagation: () => {},
+			} as unknown as MouseEvent;
+
+			clickListener!(event);
+
+			expect(defaultPrevented, 'preventDefault should be called').to.be.true;
+			expect(openSpy.calls).to.have.lengthOf(1);
+			expect(openSpy.calls[0].url).to.equal(anchor.href);
+			expect(openSpy.calls[0].target).to.equal('_blank');
+			expect(openSpy.calls[0].features).to.equal('noopener,noreferrer');
+
+			shadowIframe.remove();
+		});
+
 		it('intercepts a .pdf link and opens it in a new tab', () => {
 			const anchor = appendAnchor({ href: '/files/brochure.pdf' });
 

@@ -36,7 +36,11 @@ export function attachLinkInterceptor(iframe: HTMLIFrameElement): void {
 	doc.addEventListener(
 		'click',
 		(event) => {
-			const link = (event.target as Element | null)?.closest('a');
+			const path = event.composedPath ? event.composedPath() : [];
+			const link =
+				(path.find((node): node is HTMLAnchorElement => node instanceof HTMLAnchorElement) ??
+					((event.target as Element | null)?.closest('a') ?? null)) ??
+				null;
 			if (!link?.href) return;
 
 			const url = new URL(link.href);
